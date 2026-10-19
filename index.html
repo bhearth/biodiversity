@@ -14,10 +14,10 @@
   .status{font-size:10px;color:var(--muted);font-weight:500}
   .status.live{color:#10b981}
   .search{flex:1;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:20px;padding:7px 12px;max-width:480px;transition:.2s}
-  .search:focus-within{border-color:var(--gold);box-shadow:0 0 12px rgba(251,191,36,.15)}
+  .search:focus-within{border-color:var(--gold)}
   .search input{flex:1;background:transparent;border:none;color:var(--text);outline:none;font-size:12px;font-family:inherit}
   .search .dot{width:8px;height:8px;border-radius:50%;transition:.3s}
-  .icon-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+  .icon-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .icon-btn:hover{background:rgba(255,255,255,.1);border-color:var(--gold)}
   #chips{display:flex;gap:5px;overflow-x:auto;padding:7px 14px;border-bottom:1px solid var(--line);scrollbar-width:none;flex-shrink:0}
   #chips::-webkit-scrollbar{display:none}
@@ -61,8 +61,13 @@
   .admin-input:focus,.admin-textarea:focus{border-color:var(--gold)}
   .admin-textarea{font-family:'Courier New',monospace;font-size:11px;min-height:170px;resize:vertical;line-height:1.5}
   .btn{padding:9px 16px;border-radius:18px;background:var(--gold);color:#000;border:none;font-weight:800;cursor:pointer;font-family:inherit;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-right:6px;margin-bottom:6px}
+  .btn:hover{filter:brightness(1.1)}
   .btn.secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line)}
+  .btn.danger{background:rgba(239,68,68,.7);color:#fff}
   .code{background:#000;color:#10b981;padding:10px;border-radius:6px;font-family:'Courier New',monospace;font-size:10.5px;overflow-x:auto;margin-bottom:10px;white-space:pre;line-height:1.5}
+  .gh-status{padding:8px 12px;border-radius:8px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
+  .gh-status.ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+  .gh-status.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:var(--gold)}
   #toast{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--gold);color:#000;padding:9px 18px;border-radius:18px;font-weight:800;font-size:11.5px;opacity:0;pointer-events:none;transition:.3s;z-index:200;max-width:90vw;text-align:center}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   @media(max-width:640px){#grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;padding:8px 10px}.cell .i{font-size:18px}.cell .n{font-size:7px}}
@@ -74,7 +79,7 @@
   <div class="brand">🌍 <em>Biodiversity</em> <span class="status" id="status">● loading</span></div>
   <div class="search">
     <span>🔍</span>
-    <input id="q" placeholder="Search species, festivals, medicines…" oninput="S.onSearch(this.value)" autocomplete="off">
+    <input id="q" placeholder="Search…" oninput="S.onSearch(this.value)" autocomplete="off">
     <span class="dot" id="dot"></span>
   </div>
   <button class="icon-btn" onclick="S.surprise()" title="Random">🎲</button>
@@ -90,6 +95,7 @@
 
 <script>
 const PASS = 'biodiversity';
+const GH_KEY = 'gh_cfg_v1';
 const DIMS = [
   {name:'Winged & Pollinators',hue:50,icon:'🐝'},{name:'Decomposers',hue:25,icon:'🪱'},
   {name:'Soil & Root',hue:90,icon:'🌱'},{name:'Water & Blue',hue:200,icon:'🌊'},
@@ -102,34 +108,92 @@ const DIMS = [
 ];
 
 function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h)}
-
 const STOP = new Set(['the','and','a','an','of','to','in','is','it','for','on','with','as','by','at','or','be','this','that','from','into','has','have','had','was','were']);
-function tokenize(s){
-  return String(s||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]+/g,' ').split(/\s+/).filter(w=>w.length>1 && !STOP.has(w));
-}
+function tokenize(s){return String(s||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]+/g,' ').split(/\s+/).filter(w=>w.length>1 && !STOP.has(w))}
+function b64encode(str){const bytes=new TextEncoder().encode(str);let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
+function b64decode(str){const bin=atob(String(str).replace(/\n/g,''));const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes)}
 
 const S = {
-  items: [], index: {}, wordKeys: [], q: '', activeDim: null, timeout: null,
+  items: [], index: {}, wordKeys: [], q: '', activeDim: null, timeout: null, ghCfg: null,
 
   async init(){
+    this.loadGhCfg();
     this.renderChips();
-    try {
-      const r = await fetch('items.json?t='+Date.now());
-      if (!r.ok) throw new Error('no items.json');
-      const arr = await r.json();
-      this.items = Array.isArray(arr) ? arr : [];
-      this.items.forEach((x,i)=>{ if (!x.id) x.id = 'i'+i });
-      this.buildIndex();
-      this.setStatus(`● ${this.items.length} items`);
-      this.render();
-    } catch(e){
-      this.setStatus('● items.json not found');
-      document.getElementById('grid').innerHTML =
-        `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6">
-          Could not load <b>items.json</b>.<br><br>
-          Make sure it is in the same folder as this page,<br>and named exactly <b>items.json</b>.
-        </div>`;
+    await this.pullFromGitHub(true);
+  },
+
+  // ---------- GITHUB CONFIG ----------
+  loadGhCfg(){
+    try { this.ghCfg = JSON.parse(localStorage.getItem(GH_KEY) || 'null') } catch { this.ghCfg = null }
+  },
+  saveGhCfg(cfg){ localStorage.setItem(GH_KEY, JSON.stringify(cfg)); this.ghCfg = cfg },
+  clearGhCfg(){ localStorage.removeItem(GH_KEY); this.ghCfg = null },
+
+  // ---------- GITHUB API ----------
+  async ghGet(){
+    const c = this.ghCfg; if (!c?.token) return null;
+    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}?ref=${c.branch}`;
+    const r = await fetch(url, { headers: { Authorization: 'token ' + c.token, Accept: 'application/vnd.github+json' } });
+    if (r.status === 404) return { exists: false };
+    if (!r.ok) throw new Error('GitHub ' + r.status);
+    return await r.json();
+  },
+  async ghPut(content, sha){
+    const c = this.ghCfg;
+    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`;
+    const body = { message: 'items.json — ' + new Date().toISOString(), content: b64encode(content), branch: c.branch };
+    if (sha) body.sha = sha;
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: 'token ' + c.token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.message || ('GitHub ' + r.status)) }
+    return await r.json();
+  },
+
+  async pullFromGitHub(silent){
+    if (!this.ghCfg?.token) {
+      // Fallback: load local items.json (public read, no token needed)
+      try {
+        const r = await fetch('items.json?t=' + Date.now());
+        if (r.ok) {
+          const arr = await r.json();
+          this.items = Array.isArray(arr) ? arr : [];
+          this.items.forEach((x,i) => { if (!x.id) x.id = 'i' + i });
+          this.buildIndex(); this.renderChips();
+          this.setStatus(`● ${this.items.length} items`);
+          if (this.q) this.doSearch(this.q); else this.render();
+        } else this.setStatus('● items.json missing');
+      } catch { this.setStatus('● offline') }
+      return;
     }
+    try {
+      const res = await this.ghGet();
+      if (!res || res.exists === false) { this.items = []; this.setStatus('● empty'); return }
+      const txt = b64decode(res.content);
+      const arr = JSON.parse(txt);
+      this.items = Array.isArray(arr) ? arr : [];
+      this.items.forEach((x,i) => { if (!x.id) x.id = 'i' + i });
+      this.buildIndex(); this.renderChips();
+      this.setStatus(`● live · ${this.items.length}`);
+      if (this.q) this.doSearch(this.q); else this.render();
+      if (!silent) this.toast(`✅ Pulled ${this.items.length} items from GitHub`);
+    } catch(e) {
+      this.setStatus('● pull failed');
+      if (!silent) this.toast('Pull failed: ' + e.message);
+    }
+  },
+
+  async saveToGitHub(){
+    if (!this.ghCfg?.token) throw new Error('No GitHub token configured');
+    // Fetch current sha
+    let sha = null;
+    try { const cur = await this.ghGet(); if (cur?.sha) sha = cur.sha } catch {}
+    const clean = this.items.map(({why,score,...r}) => r);
+    const json = JSON.stringify(clean, null, 2);
+    await this.ghPut(json, sha);
+    return clean.length;
   },
 
   buildIndex(){
@@ -157,7 +221,7 @@ const S = {
       }).join('');
   },
 
-  setDim(name){ this.activeDim = name; this.renderChips(); if (this.q) this.doSearch(this.q); else this.render(); },
+  setDim(name){ this.activeDim = name; this.renderChips(); if (this.q) this.doSearch(this.q); else this.render() },
 
   cellHTML(x){
     const d = DIMS.find(d=>d.name===x.dimension) || { hue: hash(x.dimension||x.name)%360 };
@@ -172,7 +236,7 @@ const S = {
     let list = this.items;
     if (this.activeDim) list = list.filter(x=>x.dimension===this.activeDim);
     document.getElementById('grid').innerHTML = list.length ? list.map(x=>this.cellHTML(x)).join('') :
-      `<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:12px">No items. Edit items.json to add.</div>`;
+      `<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:12px">No items. Add via ⚙️</div>`;
   },
 
   onSearch(q){
@@ -186,10 +250,7 @@ const S = {
   },
 
   doSearch(q){
-    const tokens = tokenize(q);
-    if (!tokens.length) return this.render();
-
-    // Inverted index + prefix expansion
+    const tokens = tokenize(q); if (!tokens.length) return this.render();
     const sets = tokens.map(t => {
       const s = new Set();
       if (this.index[t]) this.index[t].forEach(id=>s.add(id));
@@ -227,33 +288,27 @@ const S = {
     const item = this.items.find(x=>x.id===id); if (!item) return;
     const d = DIMS.find(d=>d.name===item.dimension) || { hue: hash(item.dimension||item.name)%360 };
     const hue = (d.hue + (hash(item.name)%40) - 20 + 360) % 360;
-
     let html = `<div class="dh">
       <div class="di">${item.icon||'✨'}</div>
       ${item.poetic?`<div class="dp" style="color:hsl(${hue},80%,68%)">${item.poetic}</div>`:''}
       <div class="dn">${item.name}</div>
       <div class="dd">${item.dimension||'—'}</div>
     </div>`;
-
     const badges = [];
     if (item.category) badges.push(`<span class="badge" style="background:hsl(${hue},60%,20%);color:hsl(${hue},80%,70%)">${item.category}</span>`);
     if (item.from_species) badges.push(`<span class="badge" style="background:rgba(251,191,36,.15);color:var(--gold)">from ${item.from_species}</span>`);
     if (badges.length) html += `<div class="badges">${badges.join('')}</div>`;
-
     if (item.teaches) html += `<div class="clue"><b>Clue →</b> ${item.teaches}</div>`;
-
     const boxes = [];
     if (item.origin) boxes.push(this.iBox('Origin', item.origin));
     if (item.region) boxes.push(this.iBox('Region', item.region));
     if (item.season) boxes.push(this.iBox('Season', item.season));
     if (item.duration) boxes.push(this.iBox('Duration', item.duration));
     if (boxes.length) html += `<div class="info-grid">${boxes.join('')}</div>`;
-
     if (item.usage) html += `<div class="section-lbl">How humans use it</div><div class="text-block">${item.usage}</div>`;
     if (item.benefits?.length) html += `<div class="section-lbl">Benefits</div><div class="list-block">${item.benefits.map(b=>`<div class="list-item good">✓ ${b}</div>`).join('')}</div>`;
     if (item.risks?.length) html += `<div class="section-lbl">Risks</div><div class="list-block">${item.risks.map(r=>`<div class="list-item warn">⚠ ${r}</div>`).join('')}</div>`;
     if (item.tags?.length) html += `<div class="section-lbl">Tags</div><div class="tags-row">${item.tags.map(t=>`<span class="tag">#${t}</span>`).join('')}</div>`;
-
     document.getElementById('detail-body').innerHTML = html;
     document.getElementById('detail-page').classList.add('open');
     document.getElementById('detail-page').scrollTop = 0;
@@ -271,10 +326,10 @@ const S = {
   toast(msg){
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
-    clearTimeout(this._tt); this._tt = setTimeout(()=>t.classList.remove('show'), 2400);
+    clearTimeout(this._tt); this._tt = setTimeout(()=>t.classList.remove('show'), 2600);
   },
 
-  // ─── ADMIN (client-side only) ───
+  // ---------- ADMIN ----------
   openAdmin(){
     document.getElementById('admin-body').innerHTML = `
       <div style="text-align:center;margin-bottom:16px">
@@ -298,6 +353,11 @@ const S = {
   },
 
   renderAdmin(){
+    const c = this.ghCfg;
+    const ghStatus = c?.token
+      ? `<div class="gh-status ok">✅ Connected · <b>${c.owner}/${c.repo}</b> · branch <b>${c.branch}</b> · file <b>${c.path}</b></div>`
+      : `<div class="gh-status warn">⚠️ GitHub not connected — additions save locally only. Set up below.</div>`;
+
     document.getElementById('admin-body').innerHTML = `
       <div style="text-align:center;margin-bottom:16px">
         <h1 style="font-size:20px;font-weight:800">✅ Steward Panel</h1>
@@ -305,10 +365,40 @@ const S = {
       </div>
 
       <div class="admin-sec">
-        <h3>📥 Add items (paste JSON)</h3>
+        <h3>🔗 GitHub Sync</h3>
+        ${ghStatus}
+        <details style="margin-top:8px">
+          <summary style="cursor:pointer;font-size:11.5px;color:var(--gold);font-weight:700;padding:4px 0">${c?.token?'Change settings':'Set up GitHub sync'}</summary>
+          <div style="margin-top:10px">
+            <div class="code">Setup (5 minutes):
+1. github.com → Settings → Developer settings
+   → Personal access tokens → Fine-grained tokens
+   → Generate new token
+2. Repository access: Only select repositories
+   → pick your repo
+3. Permissions → Contents: Read and write
+4. Copy the token (github_pat_...)
+5. Fill the fields below and click Connect
+
+Token stays in YOUR browser only.
+Visitors never see it.</div>
+            <input class="admin-input" id="gh-owner" placeholder="Owner (e.g. krishna)" value="${c?.owner||''}">
+            <input class="admin-input" id="gh-repo" placeholder="Repo (e.g. khela)" value="${c?.repo||''}">
+            <input class="admin-input" id="gh-branch" placeholder="Branch (e.g. main)" value="${c?.branch||'main'}">
+            <input class="admin-input" id="gh-path" placeholder="File path (e.g. items.json)" value="${c?.path||'items.json'}">
+            <input class="admin-input" id="gh-token" type="password" placeholder="Token (github_pat_...)" value="${c?.token||''}">
+            <button class="btn" onclick="S.connectGH()">Connect</button>
+            <button class="btn secondary" onclick="S.testGH()">Test</button>
+            ${c?.token?`<button class="btn danger" onclick="S.disconnectGH()">Disconnect</button>`:''}
+          </div>
+        </details>
+      </div>
+
+      <div class="admin-sec">
+        <h3>📥 Add items (auto-saves to GitHub)</h3>
         <div class="code">[{
-  "name": "Civet",
-  "icon": "🐈",
+  "name": "Civet",           ← required
+  "icon": "🐈",              ← required
   "poetic": "bitter reformer",
   "teaches": "A civet eats...",
   "tags": ["food","bitter"],
@@ -320,18 +410,17 @@ const S = {
   "risks": ["..."]
 }]
 
-Only name + icon required.</div>
+Only name + icon required. Dimension auto-assigned by tags.</div>
         <textarea class="admin-textarea" id="admin-json" placeholder='[{"name":"...","icon":"..."}]'></textarea>
-        <button class="btn" onclick="S.addToMemory()">＋ Add</button>
+        <button class="btn" onclick="S.addItems()">＋ Add ${c?.token?'(→ GitHub)':'(memory only)'}</button>
         <button class="btn secondary" onclick="S.loadSample()">Load Sample</button>
       </div>
 
       <div class="admin-sec">
-        <h3>💾 Download updated items.json</h3>
-        <p style="color:var(--muted);font-size:11px;line-height:1.6;margin-bottom:10px">
-          Click download → replace <b>items.json</b> in your GitHub repo with the file → commit. Refresh the site. Done.
-        </p>
-        <button class="btn" onclick="S.download()">⬇ Download items.json</button>
+        <h3>⚡ Manual controls</h3>
+        <button class="btn secondary" onclick="S.pullFromGitHub(false)">⬇ Pull from GitHub</button>
+        <button class="btn secondary" onclick="S.forceSave()">💾 Force Save to GitHub</button>
+        <button class="btn secondary" onclick="S.download()">⬇ Download JSON</button>
       </div>
 
       <div class="admin-sec">
@@ -339,10 +428,52 @@ Only name + icon required.</div>
         <div style="max-height:200px;overflow-y:auto;font-size:11.5px;line-height:1.7">
           ${this.items.map((x,i)=>`${i+1}. ${x.icon||'✨'} <b>${x.name}</b> <span style="color:var(--muted)">— ${x.dimension||'—'}</span>`).join('<br>')}
         </div>
+      </div>
+
+      <div class="admin-sec">
+        <h3>ℹ️ How it works</h3>
+        <p style="color:var(--muted);font-size:11px;line-height:1.6">
+          <b>Add</b> → pushes to memory + commits to <code>${c?.path||'items.json'}</code> on GitHub.<br>
+          <b>Live in ~30 seconds</b> — GitHub Pages rebuild takes that long.<br>
+          <b>Pull</b> → fetches the latest file from GitHub into memory.<br>
+          <b>Force Save</b> → writes memory back to GitHub (for recovery).<br><br>
+          Token in localStorage only. Fine-grained PAT scoped to this one repo.
+        </p>
       </div>`;
   },
 
-  addToMemory(){
+  async connectGH(){
+    const cfg = {
+      owner: document.getElementById('gh-owner').value.trim(),
+      repo: document.getElementById('gh-repo').value.trim(),
+      branch: document.getElementById('gh-branch').value.trim() || 'main',
+      path: document.getElementById('gh-path').value.trim() || 'items.json',
+      token: document.getElementById('gh-token').value.trim()
+    };
+    if (!cfg.owner || !cfg.repo || !cfg.token) return this.toast('Owner, repo, and token required');
+    this.saveGhCfg(cfg);
+    await this.testGH();
+    this.renderAdmin();
+  },
+
+  async testGH(){
+    try {
+      const res = await this.ghGet();
+      if (!res) return this.toast('No config');
+      if (res.exists === false) this.toast('⚠️ File not found — first Add will create it');
+      else this.toast('✅ Connected — file exists on GitHub');
+      this.setStatus('● live');
+    } catch(e) { this.toast('❌ ' + e.message) }
+  },
+
+  disconnectGH(){
+    if (!confirm('Disconnect GitHub? Additions will go to memory only.')) return;
+    this.clearGhCfg();
+    this.renderAdmin();
+    this.toast('Disconnected');
+  },
+
+  async addItems(){
     const raw = document.getElementById('admin-json').value.trim();
     if (!raw) return this.toast('Paste JSON first');
     let data;
@@ -360,17 +491,35 @@ Only name + icon required.</div>
         const best = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0];
         c.dimension = best ? best[0] : 'Uncategorized';
       }
-      c.id = 'i' + (Date.now() + Math.random()).toString(36);
+      c.id = c.id || ('i' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
       this.items.push(c); n++;
     });
-    if (n){
-      this.buildIndex();
-      this.renderChips();
-      this.render();
-      this.setStatus(`● ${this.items.length} items`);
-      this.renderAdmin();
-      this.toast(`Added ${n} in memory. Download items.json to save.`);
-    } else this.toast('Nothing valid — need name + icon');
+    if (!n) return this.toast('Nothing valid — name + icon required');
+    this.buildIndex(); this.renderChips(); this.render();
+    this.setStatus(`● ${this.items.length} items`);
+    document.getElementById('admin-json').value = '';
+
+    if (this.ghCfg?.token) {
+      this.toast(`Saving ${n} to GitHub…`);
+      try {
+        const total = await this.saveToGitHub();
+        this.toast(`✅ ${n} added · ${total} total on GitHub (live in ~30s)`);
+        this.setStatus(`● live · ${total}`);
+      } catch(e) {
+        this.toast('❌ GitHub save failed: ' + e.message + ' — use Force Save');
+      }
+    } else {
+      this.toast(`Added ${n} in memory — connect GitHub to auto-save`);
+    }
+    this.renderAdmin();
+  },
+
+  async forceSave(){
+    if (!this.ghCfg?.token) return this.toast('Connect GitHub first');
+    try {
+      const total = await this.saveToGitHub();
+      this.toast(`✅ Saved ${total} items to GitHub`);
+    } catch(e) { this.toast('❌ ' + e.message) }
   },
 
   loadSample(){
@@ -393,13 +542,13 @@ Only name + icon required.</div>
   },
 
   download(){
-    const clean = this.items.map(({why, score, ...rest}) => rest);
+    const clean = this.items.map(({why, score, ...r}) => r);
     const blob = new Blob([JSON.stringify(clean, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'items.json'; a.click();
     URL.revokeObjectURL(url);
-    this.toast(`Downloaded ${this.items.length} items — replace items.json on GitHub`);
+    this.toast('Downloaded items.json');
   },
 
   closeAdmin(){ document.getElementById('admin-page').classList.remove('open') }
