@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biodiversity Spectrum · Universal</title>
+<style>
+  :root{--bg:#04070b;--text:#e8eef5;--muted:#7f8ea3;--gold:#fbbf24;--line:rgba(255,255,255,.08)}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .brand{font-weight:800;font-size:14px;white-space:nowrap}
+  .brand em{color:var(--gold);font-style:normal}
+  .search{flex:1;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:20px;padding:7px 12px;max-width:480px;transition:.2s}
+  .search:focus-within{border-color:var(--gold);box-shadow:0 0 12px rgba(251,191,36,.15)}
+  .search input{flex:1;background:transparent;border:none;color:var(--text);outline:none;font-size:12px;font-family:inherit}
+  .search .dot{width:8px;height:8px;border-radius:50%;transition:.3s}
+  .icon-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+  .icon-btn:hover{background:rgba(255,255,255,.1);border-color:var(--gold)}
+  #chips{display:flex;gap:5px;overflow-x:auto;padding:7px 14px;border-bottom:1px solid var(--line);scrollbar-width:none;flex-shrink:0}
+  #chips::-webkit-scrollbar{display:none}
+  .chip{flex-shrink:0;padding:4px 10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--text);font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:.15s}
+  .chip:hover{background:rgba(255,255,255,.08)}
+  .chip.active{background:hsl(var(--h,50),55%,20%);border-color:hsl(var(--h,50),80%,55%);color:#fff}
+  #grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:5px;padding:10px 14px;align-content:start}
+  #grid::-webkit-scrollbar{width:6px}
+  #grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+  .cell{aspect-ratio:1;background:hsl(var(--h),35%,11%);border:1px solid hsl(var(--h),50%,25%);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:3px;text-align:center;transition:.15s;overflow:hidden}
+  .cell:hover{transform:translateY(-2px) scale(1.04);background:hsl(var(--h),55%,20%);border-color:hsl(var(--h),80%,55%);box-shadow:0 6px 14px rgba(0,0,0,.5)}
+  .cell .i{font-size:22px;line-height:1;margin-bottom:2px}
+  .cell .n{font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.2px;color:#cdd6e3;line-height:1.05;word-break:break-word}
+  .page{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;overflow-y:auto;padding:18px}
+  .page.open{display:block}
+  .page .back{position:fixed;top:10px;left:10px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--line);color:#fff;font-size:17px;cursor:pointer;z-index:101;display:flex;align-items:center;justify-content:center}
+  .page .back:hover{background:rgba(255,255,255,.15)}
+  .page-inner{max-width:860px;margin:0 auto;padding-top:40px}
+  /* DETAIL PAGE */
+  .dh{text-align:center;margin-bottom:16px}
+  .dh .di{font-size:70px;line-height:1;margin-bottom:4px}
+  .dh .dp{font-family:Georgia,serif;font-style:italic;font-size:20px;line-height:1.2;margin-bottom:2px}
+  .dh .dn{font-size:26px;font-weight:800}
+  .dh .dd{font-size:9.5px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:4px}
+  .badges{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 14px}
+  .badge{padding:3px 10px;border-radius:12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+  .clue{background:rgba(251,191,36,.06);border-left:3px solid var(--gold);padding:12px 14px;border-radius:8px;margin:14px 0;font-size:13.5px;line-height:1.55;color:#e8e2d5}
+  .clue b{color:var(--gold)}
+  .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:14px 0}
+  .info-box{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .info-box .lb{font-size:8.5px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:3px;font-weight:800}
+  .info-box .vl{font-size:12px;color:var(--text);line-height:1.3;word-break:break-word}
+  .section-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);margin:16px 0 8px;font-weight:800}
+  .text-block{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:12.5px;line-height:1.55;color:#d8dfe8}
+  .list-block{display:flex;flex-direction:column;gap:5px}
+  .list-item{padding:7px 10px;background:rgba(255,255,255,.03);border-radius:6px;font-size:12px;line-height:1.4}
+  .list-item.good{border-left:2px solid #10b981}
+  .list-item.warn{border-left:2px solid #ef4444}
+  .tags-row{display:flex;flex-wrap:wrap;gap:5px}
+  .tag{padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+  .link-chip{padding:5px 11px;border-radius:14px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s}
+  .link-chip:hover{background:rgba(251,191,36,.22)}
+  .weave-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px}
+  .wcard{padding:10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:2px}
+  .wcard:hover{border-color:var(--gold);background:rgba(251,191,36,.06);transform:translateY(-1px)}
+  .wcard .wi{font-size:20px;line-height:1}
+  .wcard .wn{font-size:11px;font-weight:800}
+  .wcard .wp{font-size:9.5px;font-style:italic;color:var(--muted);font-family:Georgia,serif}
+  .wcard .wd{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
+  .helpful-btn{width:100%;padding:11px;border-radius:20px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);color:var(--gold);font-weight:800;cursor:pointer;font-family:inherit;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:18px}
+  .helpful-btn:hover{background:rgba(251,191,36,.25)}
+  .helpful-count{text-align:center;font-size:10px;color:var(--muted);margin-top:5px}
+  /* ADMIN */
+  .admin-sec{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+  .admin-sec h3{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold);margin-bottom:10px;font-weight:800}
+  .admin-input,.admin-textarea{width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:7px;color:var(--text);font-family:inherit;font-size:12.5px;outline:none;margin-bottom:7px}
+  .admin-input:focus,.admin-textarea:focus{border-color:var(--gold)}
+  .admin-textarea{font-family:'Courier New',monospace;font-size:11px;min-height:180px;resize:vertical;line-height:1.5}
+  .btn{padding:9px 16px;border-radius:18px;background:var(--gold);color:#000;border:none;font-weight:800;cursor:pointer;font-family:inherit;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-right:6px;margin-bottom:6px}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line)}
+  .btn.danger{background:rgba(239,68,68,.7);color:#fff}
+  .code{background:#000;color:#10b981;padding:10px;border-radius:6px;font-family:'Courier New',monospace;font-size:10.5px;overflow-x:auto;margin-bottom:10px;white-space:pre;line-height:1.5}
+  .custom-list{max-height:180px;overflow-y:auto}
+  .custom-item{display:flex;justify-content:space-between;align-items:center;padding:6px 9px;border-bottom:1px solid var(--line);font-size:11.5px}
+  .custom-item button{background:rgba(239,68,68,.5);color:#fff;border:none;padding:2px 7px;border-radius:5px;cursor:pointer;font-size:10px}
+  #toast{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-20px);background:var(--gold);color:#000;padding:9px 18px;border-radius:18px;font-weight:800;font-size:11.5px;opacity:0;pointer-events:none;transition:.3s;z-index:200;max-width:90vw;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (max-width:640px){
+    #grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:4px;padding:8px 10px}
+    .cell .i{font-size:18px}.cell .n{font-size:7px}
+    .dh .di{font-size:54px}.dh .dn{font-size:22px}
+    .weave-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">🌍 <em>Biodiversity</em></div>
+  <div class="search">
+    <span>🔍</span>
+    <input id="q" placeholder="Search…" oninput="S.search(this.value)" autocomplete="off">
+    <span class="dot" id="dot"></span>
+  </div>
+  <button class="icon-btn" onclick="S.surprise()" title="Random">🎲</button>
+  <button class="icon-btn" onclick="S.openAdmin()" title="Steward">⚙️</button>
+</header>
+
+<div id="chips"></div>
+<main id="grid"></main>
+
+<div class="page" id="detail-page"><button class="back" onclick="S.closeDetail()">←</button><div class="page-inner" id="detail-body"></div></div>
+<div class="page" id="admin-page"><button class="back" onclick="S.closeAdmin()">←</button><div class="page-inner" id="admin-body"></div></div>
+
+<div id="toast"></div>
+
+<script>
+const ADMIN_PASS = 'biodiversity';
+const K_CUSTOM = 'bio_custom_v3', K_HELP = 'bio_help_v3', K_PACK = 'bio_pack_v3';
+
+function I(n,i,p,t,c,ext){ return Object.assign({n,i,p,t,c:c||'',tags:[].slice.call(arguments,5)},ext||{}); }
+function P(n,i,p,t,c,from,usage,ext){ return Object.assign({n,i,p,t,c,tags:[],from,usage},ext||{}); }
+
+const D = [
+  {n:'Winged & Pollinators',h:50,icon:'🐝',items:[
+    I('Bee','🐝','sweet alchemist','Works for free; makes sweetness. What else turns labour into honey?','species','pollinator','sweet','winged'),
+    I('Butterfly','🦋','flying flower','Tastes with its feet. What would it mean to know before you land?','species','pollinator','beauty','winged'),
+    I('Hummingbird','🐦','jewel of air','Hovers still while beating 50 times a second. What stillness comes from motion?','species','pollinator','beauty','winged'),
+    I('Bat','🦇','night gardener','Sees with sound. What else maps the world without eyes?','species','pollinator','night','mammal'),
+    I('Beetle','🪲','small tank','Armoured, patient, everywhere. What survives by being slow?','species','pollinator','soil','winged'),
+    I('Ant','🐜','tiny engineer','Farms fungi underground. What else farms without a field?','species','soil','fungi','winged'),
+    I('Ladybug','🐞','red shepherd','Eats aphids that eat crops. What eats what eats you?','species','pollinator','pest','winged'),
+    I('Firefly','✨','living lantern','Bioluminescence. What else turns chemistry into light?','species','night','wonder','winged'),
+    I('Cicada','🦗','underground drummer','17 years underground, sings one summer. What is patience?','species','soil','sound','winged'),
+    I('Cricket','🦗','field singer','Sings with legs. What else makes music without a mouth?','species','sound','night','winged'),
+    I('Honeybee','🐝','liquid sun','Turns sun into sweetness through a million flowers. What is collective work?','species','pollinator','sweet','winged'),
+    I('Termite','🐛','wood eater','Eats wood, feeds the soil, feeds the birds. What is destruction?','species','soil','wood','fungi'),
+    I('Fly','🪰','patient recycler','Lays eggs on the dead, turns death into life. What returns without being thanked?','species','decompose','winged'),
+    I('Dragonfly','🪰','sky hunter','Four wings, each independent. What flies by not being in sync?','species','water','hunter','winged')
+  ]},
+  {n:'Decomposers & Recyclers',h:25,icon:'🪱',items:[
+    I('Earthworm','🪱','silent plough','Eats the ground and improves it. What improves by passing through?','species','soil','decompose','fertility'),
+    I('Vulture','🦅','sky janitor','Cleans what no one else will touch. What is the price of disgust?','species','decompose','sky','hunter'),
+    I('Dung beetle','🪲','gold roller','Rolls dung into a ball and buries it. What treasure hides in waste?','species','decompose','soil','fertility'),
+    I('Fungi','🍄','quiet network','Links roots, rots wood, feeds the forest. What connects without being seen?','species','fungi','soil','network'),
+    I('Slime mold','🟡','solver of mazes','Finds the shortest path without a brain. What thinks without a mind?','species','fungi','network','wonder'),
+    I('Mushroom','🍄','forest candle','The fruit of a hidden network. What is visible of the invisible?','species','fungi','soil','food'),
+    I('Crow','🐦','field philosopher','Uses tools, remembers faces, plays. What thinks in feathers?','species','sky','mind','wonder'),
+    I('Hyena','🐺','patient cleanser','Eats bones the lion leaves. What is left when the strong are done?','species','decompose','hunter','grass'),
+    I('Crab','🦀','shore janitor','Eats what the tide leaves. What does the shore do with its dead?','species','decompose','water','shore'),
+    I('Sea cucumber','🥒','ocean vacuum','Filters the sand, cleans the seafloor. What cleans by passing through?','species','decompose','water','soil'),
+    I('Bacteria','🦠','invisible worker','Breaks down everything, makes soil, makes breath. What is invisible and essential?','species','decompose','micro','fertility'),
+    I('Starfish','⭐','regenerating arm','Loses an arm, grows it back. What else heals by losing?','species','water','regenerate','wonder')
+  ]},
+  {n:'Soil & Root',h:90,icon:'🌱',items:[
+    I('Grass','🌱','patient green','Bends to wind, holds soil. What holds by bending?','species','soil','green','patience'),
+    I('Root','🌿','hidden hand','Reaches for water where no one sees. What seeks without eyes?','species','soil','water','hidden'),
+    I('Lichen','🪨','stone eater','Slowly eats rock into soil. What builds by waiting?','species','stone','soil','patience'),
+    I('Moss','🌿','first colonist','Grows where nothing else will. What begins where nothing begins?','species','stone','green','patience'),
+    I('Clover','🍀','nitrogen weaver','Pulls nitrogen from air into soil. What feeds without being fed?','species','soil','green','fertility'),
+    I('Bamboo','🎋','fastest grass','Grows a meter a day. What grows by being hollow?','species','green','wood','fast'),
+    I('Wheat','🌾','golden staff','Feeds billions from a seed. What feeds the world from a grain?','species','green','field','food'),
+    I('Rice','🌾','water child','Grows in water, feeds half the planet. What thrives in floods?','species','green','water','food'),
+    I('Maize','🌽','sun collector','Grows tall to catch the sun. What reaches for light?','species','green','field','food'),
+    I('Millet','🌾','drought friend','Survives with almost no water. What lives on little?','species','green','field','food'),
+    I('Potato','🥔','underground treasure','Stores energy underground. What hides its wealth?','species','green','soil','food'),
+    I('Tulsi','🌿','holy healer','Grows in every courtyard, heals every cough. What heals by being near?','species','green','medicine','sacred')
+  ]},
+  {n:'Water & Blue',h:200,icon:'🌊',items:[
+    I('Fish','🐟','water dancer','Breathes water, moves in schools. What moves as one?','species','water','food','movement'),
+    I('Whale','🐋','ocean gardener','Fertilizes the ocean with its waste. What gives by passing?','species','water','large','cycle'),
+    I('Dolphin','🐬','wave rider','Plays for no reason. What plays for its own sake?','species','water','play','mind'),
+    I('Octopus','🐙','many-handed','Eight arms, three hearts, changes colour. What thinks with its skin?','species','water','mind','wonder'),
+    I('Coral','🪸','reef mason','Builds an island from its own body. What builds by dying?','species','water','reef','wonder'),
+    I('Plankton','🦠','ocean breath','Makes half the oxygen we breathe. What breathes for the planet?','species','water','micro','breath'),
+    I('Kelp','🌿','underwater forest','Grows 30 meters tall in the sea. What is a forest under water?','species','water','green','forest'),
+    I('Mangrove','🌳','coast guard','Holds the shore, shelters fish. What protects by standing still?','species','water','green','shore'),
+    I('Otter','🦦','river player','Plays in the water it lives in. What lives by playing?','species','water','play','mammal'),
+    I('Sea turtle','🐢','ancient wanderer','Crosses oceans to lay eggs on one beach. What returns home?','species','water','ancient','wonder'),
+    I('Oyster','🦪','pearl maker','Turns irritation into treasure. What makes beauty from pain?','species','water','shell','wonder'),
+    I('Jellyfish','🪼','soft lantern','No brain, no heart, still drifts and stings. What lives without a mind?','species','water','soft','wonder')
+  ]},
+  {n:'Sky & Air',h:190,icon:'🦅',items:[
+    I('Eagle','🦅','far seer','Sees a rabbit from a mile up. What sees what cannot be seen?','species','sky','hunter','vision'),
+    I('Falcon','🦅','fastest dive','Dives faster than a car. What is speed?','species','sky','hunter','speed'),
+    I('Albatross','🕊️','ocean flier','Flies for years without landing. What never lands?','species','sky','water','wonder'),
+    I('Owl','🦉','night seer','Sees in the dark, hears a mouse under snow. What hears what others cannot?','species','sky','night','vision'),
+    I('Parrot','🦜','word catcher','Mimics speech without understanding. What speaks without knowing?','species','sky','sound','mind'),
+    I('Peacock','🦚','feather dancer','Displays a hundred eyes to attract. What attracts?','species','sky','beauty','wonder'),
+    I('Stork','🕊️','long traveller','Migrates thousands of miles. What knows the way?','species','sky','migration','wonder'),
+    I('Crane','🕊️','courtship dancer','Dances to choose a partner. What dances to choose?','species','sky','play','beauty'),
+    I('Pigeon','🕊️','city navigator','Finds home from a thousand miles. What always returns?','species','sky','city','navigation'),
+    I('Sparrow','🐦','small neighbour','Lives beside humans for thousands of years. What lives with us?','species','sky','city','small')
+  ]},
+  {n:'Forest & Flora',h:130,icon:'🌳',items:[
+    I('Oak','🌳','patient king','Lives a thousand years, feeds three hundred species. What feeds by standing still?','species','forest','tree','ancient'),
+    I('Pine','🌲','winter friend','Stays green through snow. What stays when others leave?','species','forest','tree','winter'),
+    I('Banyan','🌳','root cathedral','Drops roots from branches to make new trunks. What spreads by reaching down?','species','forest','tree','sacred'),
+    I('Neem','🌳','village pharmacy','Every part heals something. What is a pharmacy in a tree?','species','forest','tree','medicine'),
+    I('Palm','🌴','wind dancer','Bends in storm, stands in calm. What bends to survive?','species','forest','tree','tropical'),
+    I('Cactus','🌵','water keeper','Stores water for years. What lives by holding?','species','forest','desert','water'),
+    I('Rose','🌹','thorned gift','Beauty with thorns. What gives beauty and pain together?','species','forest','flower','beauty'),
+    I('Lotus','🪷','mud flower','Rises from mud to bloom clean. What rises from what it grows in?','species','forest','flower','sacred'),
+    I('Jasmine','🌼','night scent','Smells strongest at night. What blooms in darkness?','species','forest','flower','scent'),
+    I('Sunflower','🌻','sun follower','Turns its face to follow the sun. What follows light?','species','forest','flower','sun'),
+    I('Marigold','🌼','pest keeper','Keeps pests from the field. What protects by being beautiful?','species','forest','flower','pest'),
+    I('Lavender','💜','calm field','Calms the mind by smell. What calms without words?','species','forest','medicine','scent')
+  ]},
+  {n:'Savanna & Grazers',h:100,icon:'🐄',items:[
+    I('Cow','🐄','gentle factory','Gives milk, then dung, then its body to the soil. What gives more in death than in life?','species','grass','food','fertility'),
+    I('Buffalo','🐃','wetland keeper','Wallows in mud, keeps the wetland alive. What keeps what it uses?','species','grass','water','fertility'),
+    I('Sheep','🐑','wool cloud','Grows a coat every year, never buys one. What gives clothing by being alive?','species','grass','wool','food'),
+    I('Goat','🐐','cliff walker','Eats what others won\'t, climbs where others can\'t. What thrives on the edge?','species','grass','food','climb'),
+    I('Horse','🐎','wind runner','Runs with the wind, sleeps standing. What runs and never falls?','species','grass','speed','wonder'),
+    I('Camel','🐪','desert ship','Crosses deserts on stored water. What carries water without a bottle?','species','grass','desert','water'),
+    I('Elephant','🐘','seed planter','Walks miles to spread seeds in its dung. What plants by walking?','species','grass','forest','seed'),
+    I('Zebra','🦓','pattern walker','Stripes confuse predators. What hides by being seen?','species','grass','movement','wonder'),
+    I('Deer','🦌','forest watcher','Stands still, listens, then runs. What survives by listening?','species','grass','forest','listener'),
+    I('Rhino','🦏','ancient armour','Survived fifty million years. What survived by being thick?','species','grass','ancient','armour'),
+    I('Hippo','🦛','river guardian','Keeps rivers flowing by clearing them. What clears by living?','species','grass','water','large'),
+    I('Yak','🐂','cold walker','Lives where others freeze. What lives where nothing lives?','species','grass','mountain','cold')
+  ]},
+
+  // ─── NEW DIMENSIONS ──────────────────────────────
+
+  {n:'Faith & Festival',h:280,icon:'🪔',items:[
+    Object.assign(I('Aarti','🪔','lamp greeting','What does the flame say to the darkness?','ritual','ritual','sacred','light'),{usage:'Waving lamps before a deity while singing, at dawn and dusk.',region:'India',duration:'5-15 min',benefits:['grounding','community','reverence']}),
+    Object.assign(I('Puja','🪷','daily offering','What do you offer when you have almost nothing?','ritual','ritual','sacred','offering'),{usage:'Flowers, water, incense, food offered to a deity at home or temple.',region:'India',duration:'10-30 min',benefits:['focus','gratitude','daily rhythm']}),
+    Object.assign(I('Yajna','🔥','fire offering','What does the fire carry up that words cannot?','ritual','ritual','fire','sacred'),{usage:'Fire ritual with mantras and offerings into the flame.',region:'India',duration:'1-3 hours',benefits:['purification','community','transformation']}),
+    Object.assign(I('Fasting','🌙','empty vessel','What opens when the stomach is quiet?','ritual','ritual','body','clarity'),{usage:'Abstaining from food (and sometimes water) for spiritual clarity.',region:'Worldwide',duration:'Sunrise to sunset / full day',benefits:['detox','discipline','clarity'],risks:['dehydration','weakness']}),
+    Object.assign(I('Diwali','🪔','festival of lights','What do you light when the world is dark?','festival','festival','light','sacred'),{usage:'Lamps, sweets, gifts, family gatherings, fireworks.',region:'India & worldwide',duration:'5 days',season:'October–November',benefits:['family bonding','hope','generosity'],risks:['air pollution','overspending']}),
+    Object.assign(I('Holi','🌈','festival of colour','What washes off when colour covers everything?','festival','festival','colour','joy'),{usage:'Throwing coloured powder and water; singing, dancing, sweets.',region:'India',duration:'1-2 days',season:'March',benefits:['social bonding','joy','renewal'],risks:['skin irritation','water waste']}),
+    Object.assign(I('Eid','🌙','festival of return','What is given back to those who have less?','festival','festival','sacred','charity'),{usage:'Prayer, charity, family meals, new clothes.',region:'Worldwide',duration:'1-3 days',season:'Varies (lunar)',benefits:['charity','family','gratitude']}),
+    Object.assign(I('Christmas','🎄','festival of giving','What is reborn in the darkest night?','festival','festival','light','giving'),{usage:'Church services, gifts, family meals, carols.',region:'Worldwide',duration:'1-12 days',season:'December',benefits:['family','generosity','hope']}),
+    Object.assign(I('Pongal','🌾','harvest thanks','What do you thank when the harvest arrives?','festival','festival','harvest','gratitude'),{usage:'Cooking new rice, thanking the sun, cattle, and rain.',region:'South India',duration:'4 days',season:'January',benefits:['gratitude','community','harvest joy']}),
+    Object.assign(I('Onam','🌺','homecoming','What returns when you open your door?','festival','festival','harvest','homecoming'),{usage:'Flower carpets, boat races, feasts, welcoming the king.',region:'Kerala',duration:'10 days',season:'August–September',benefits:['hospitality','beauty','harvest']}),
+    Object.assign(I('Navratri','💃','nine nights','What dances in you for nine nights?','festival','festival','dance','sacred'),{usage:'Nine nights of dance (Garba, Dandiya) and fasting.',region:'India',duration:'9 nights',season:'September–October',benefits:['community','dance','devotion']}),
+    Object.assign(I('Kumbh Mela','🌊','gathering of rivers','What washes when millions bathe together?','festival','festival','water','sacred'),{usage:'Bathing in sacred rivers, pilgrimage, spiritual discourse.',region:'India',duration:'1-3 months',season:'Varies',benefits:['purification','faith','community'],risks:['crowd safety','pollution']}),
+    Object.assign(I('Guru Purnima','🙏','full moon of teachers','Who lit the lamp you carry?','festival','festival','teacher','gratitude'),{usage:'Honouring teachers and lineage, offering gratitude.',region:'India',duration:'1 day',season:'July (full moon)',benefits:['gratitude','lineage','humility']}),
+    Object.assign(I('Varanasi Ghats','🛕','city of return','What comes home to die here?','place','place','river','sacred'),{usage:'Pilgrimage, bathing, cremation, prayer along the Ganga.',region:'India',benefits:['liberation','pilgrimage','death ritual']}),
+    Object.assign(I('Bodh Gaya','🌳','awakening tree','Where does the mind finally rest?','place','place','sacred','awakening'),{usage:'Pilgrimage to the site of the Buddha\'s enlightenment.',region:'Bihar, India',benefits:['pilgrimage','meditation','peace']})
+  ]},
+
+  {n:'Meditation & Silence',h:265,icon:'🧘',items:[
+    Object.assign(I('Vipassana','🧘','seeing things as they are','What watches the watcher?','meditation','meditation','silence','insight'),{usage:'10-day silent retreat observing breath and sensation.',duration:'10 days',benefits:['insight','equanimity','discipline'],risks:['intense emotions','requires guidance']}),
+    Object.assign(I('Zazen','🪷','just sitting','What is left when you do nothing?','meditation','meditation','silence','zen'),{usage:'Seated meditation facing a wall, watching breath.',duration:'20-40 min',benefits:['stillness','presence','clarity']}),
+    Object.assign(I('Transcendental','🌀','effortless mantra','What repeats itself when you stop trying?','meditation','meditation','mantra','silence'),{usage:'Silently repeating a mantra for 20 minutes twice daily.',duration:'20 min × 2',benefits:['calm','rest','creativity']}),
+    Object.assign(I('Yoga Nidra','🌙','yogic sleep','What sleeps while you are awake?','meditation','meditation','body','sleep'),{usage:'Guided lying-down practice between waking and sleep.',duration:'20-45 min',benefits:['deep rest','healing','sleep quality']}),
+    Object.assign(I('Heartfulness','💗','heart meditation','What opens when the mind quiets?','meditation','meditation','heart','silence'),{usage:'Meditation on the heart with transmission from a trainer.',duration:'20-30 min',benefits:['calm','connection','love']}),
+    Object.assign(I('Sudarshan Kriya','🌬️','rhythmic breath','What clears when the breath is rhythmic?','meditation','meditation','breath','energy'),{usage:'Cyclic breathing practice for energy and clarity.',duration:'20 min',benefits:['stress relief','energy','clarity']}),
+    Object.assign(I('Sufi Dhikr','📿','remembrance','What remembers itself when you forget?','meditation','meditation','mantra','sacred'),{usage:'Chanting the names of the Divine in a circle.',duration:'20-60 min',benefits:['devotion','community','peace']}),
+    Object.assign(I('Christian Contemplation','✝️','resting in presence','What listens when you stop speaking?','meditation','meditation','silence','sacred'),{usage:'Silent contemplation on a sacred word or passage.',duration:'20 min',benefits:['peace','attention','reverence']}),
+    Object.assign(I('Earth Hora','⏳','the one hour','What settles when an hour is given to silence?','meditation','meditation','silence','time'),{usage:'One hour of shared silence, same time each day.',duration:'60 min',benefits:['nervous system reset','collective field','clarity']}),
+    Object.assign(I('Bina Mann','🧠','without mind','Who is present when the mind is still?','meditation','meditation','silence','insight'),{usage:'Silent observation of thoughts without identification.',benefits:['insight','equanimity','freedom']}),
+    Object.assign(I('Walking Meditation','🚶','slow steps','What arrives with each step?','meditation','meditation','walk','presence'),{usage:'Walking slowly with attention on each footstep.',duration:'15-30 min',benefits:['grounding','presence','body awareness']}),
+    Object.assign(I('Breath Watching','🌬️','one breath at a time','What stays when the breath stops?','meditation','meditation','breath','silence'),{usage:'Simply watching the natural breath without changing it.',duration:'5-20 min',benefits:['calm','focus','presence']})
+  ]},
+
+  {n:'Music & Instruments',h:320,icon:'🎵',items:[
+    Object.assign(I('Sitar','🎸','stringed voice','What sings when a wire is pulled?','instrument','music','string','india'),{origin:'India',usage:'Plucked string instrument, central to Hindustani classical music.',region:'South Asia'}),
+    Object.assign(I('Tabla','🥁','paired drum','What speaks in two voices?','instrument','music','drum','india'),{origin:'India',usage:'Pair of hand drums; the rhythmic backbone of Hindustani music.',region:'South Asia'}),
+    Object.assign(I('Bansuri','🎶','bamboo breath','What sings from a hollow reed?','instrument','music','flute','india'),{origin:'India',usage:'Bamboo transverse flute used in classical and folk music.',region:'South Asia'}),
+    Object.assign(I('Veena','🎸','southern string','What vibrates when the cosmos speaks?','instrument','music','string','india'),{origin:'India',usage:'String instrument of Carnatic music.',region:'South India'}),
+    Object.assign(I('Sarangi','🎻','voice of sorrow','What cries without a mouth?','instrument','music','string','india'),{origin:'India',usage:'Bowed string instrument, closest to the human voice.',region:'South Asia'}),
+    Object.assign(I('Mridangam','🥁','barrel drum','What beats the measure of time?','instrument','music','drum','india'),{origin:'India',usage:'Double-headed drum of Carnatic music.',region:'South India'}),
+    Object.assign(I('Guitar','🎸','six strings','What travels when a string is plucked?','instrument','music','string','global'),{origin:'Spain',usage:'Plucked string instrument used across all modern genres.',region:'Worldwide'}),
+    Object.assign(I('Piano','🎹','eighty-eight keys','What sings when a hammer strikes?','instrument','music','keyboard','global'),{origin:'Italy',usage:'Keyboard instrument, foundational for Western music.',region:'Worldwide'}),
+    Object.assign(I('Violin','🎻','singing wood','What weeps when a bow is drawn?','instrument','music','string','global'),{origin:'Italy',usage:'Bowed string instrument, central to Western classical.',region:'Worldwide'}),
+    Object.assign(I('Drum Kit','🥁','rhythm engine','What moves when the foot falls?','instrument','music','drum','global'),{origin:'USA',usage:'Set of drums and cymbals played by one person.',region:'Worldwide'}),
+    Object.assign(I('Didgeridoo','🎺','earth breath','What sings from a hollow log?','instrument','music','wind','australia'),{origin:'Australia',usage:'Long wooden wind instrument of Aboriginal Australia.',region:'Australia'}),
+    Object.assign(I('Koto','🎶','silk strings','What speaks when the universe tunes itself?','instrument','music','string','japan'),{origin:'Japan',usage:'Thirteen-string zither of Japanese classical music.',region:'Japan'}),
+    Object.assign(I('Bagpipes','🎺','breath of the hills','What wails when the wind is stored?','instrument','music','wind','scotland'),{origin:'Scotland',usage:'Wind instrument with a bag and pipes, iconic of Scotland.',region:'Scotland'}),
+    Object.assign(I('Harp','🎵','heavenly strings','What sings when a finger brushes air?','instrument','music','string','ancient'),{origin:'Ancient Egypt / Ireland',usage:'Plucked string instrument, older than writing.',region:'Worldwide'}),
+    Object.assign(I('Bells','🔔','bronze voice','What calls when the air is struck?','instrument','music','metal','sacred'),{origin:'China / India',usage:'Struck metal instruments for ritual and timekeeping.',region:'Worldwide'}),
+    Object.assign(I('Raga','🎼','modal melody','What shape does a feeling take in sound?','music','music','melody','india'),{origin:'India',usage:'Melodic framework in Indian classical music; each has a mood and time.',region:'South Asia'}),
+    Object.assign(I('Tala','🥁','rhythmic cycle','What repeats, and what changes inside the repeat?','music','music','rhythm','india'),{origin:'India',usage:'Rhythmic cycle in Indian classical music.',region:'South Asia'}),
+    Object.assign(I('Hindustani','🎼','northern tradition','What sings when the sun sets?','music','music','classical','india'),{origin:'North India',usage:'Classical music tradition of North India.',region:'South Asia'}),
+    Object.assign(I('Carnatic','🎼','southern tradition','What sings when the temple opens?','music','music','classical','india'),{origin:'South India',usage:'Classical music tradition of South India.',region:'South Asia'}),
+    Object.assign(I('Jazz','🎷','improvised soul','What happens when the rules bend?','music','music','improvisation','global'),{origin:'USA',usage:'Improvisational music born in African-American communities.',region:'Worldwide'})
+  ]},
+
+  {n:'Dance Forms',h:340,icon:'💃',items:[
+    Object.assign(I('Bharatanatyam','💃','temple dance','What speaks when the body becomes a language?','dance','dance','classical','india'),{origin:'Tamil Nadu',usage:'Classical Indian dance with precise gestures and expressions.',region:'South India'}),
+    Object.assign(I('Kathak','💃','story dance','What tells the story when the body turns?','dance','dance','classical','india'),{origin:'North India',usage:'Classical dance with spins and rhythmic footwork.',region:'North India'}),
+    Object.assign(I('Kathakali','🎭','story play','What masks the face so the soul can speak?','dance','dance','classical','india'),{origin:'Kerala',usage:'Dramatic dance-drama with elaborate makeup and costume.',region:'Kerala'}),
+    Object.assign(I('Odissi','💃','temple sculpture','What moves when stone remembers?','dance','dance','classical','india'),{origin:'Odisha',usage:'Classical dance from Odisha with sculptural poses.',region:'East India'}),
+    Object.assign(I('Kuchipudi','💃','village dance','What dances when the village gathers?','dance','dance','classical','india'),{origin:'Andhra Pradesh',usage:'Classical dance with graceful movement and storytelling.',region:'South India'}),
+    Object.assign(I('Mohiniyattam','💃','feminine grace','What sways when the river turns?','dance','dance','classical','india'),{origin:'Kerala',usage:'Classical dance of Kerala, graceful and feminine.',region:'Kerala'}),
+    Object.assign(I('Manipuri','💃','gentle devotion','What prays when the feet move?','dance','dance','classical','india'),{origin:'Manipur',usage:'Devotional dance from Manipur, gentle and circular.',region:'Northeast India'}),
+    Object.assign(I('Garba','💃','night circle','What sings when the circle turns?','dance','dance','folk','india'),{origin:'Gujarat',usage:'Circular dance during Navratri with claps and spinning.',region:'Gujarat'}),
+    Object.assign(I('Bhangra','💃','harvest joy','What jumps when the harvest comes?','dance','dance','folk','india'),{origin:'Punjab',usage:'Energetic harvest dance of Punjab.',region:'Punjab'}),
+    Object.assign(I('Lavani','💃','fire song','What burns when the drum beats?','dance','dance','folk','india'),{origin:'Maharashtra',usage:'Folk dance with fast rhythm and expressive movement.',region:'Maharashtra'}),
+    Object.assign(I('Flamenco','💃','fire dance','What burns when the guitar cries?','dance','dance','folk','spain'),{origin:'Andalusia, Spain',usage:'Passionate Andalusian dance with guitar and song.',region:'Spain'}),
+    Object.assign(I('Ballet','🩰','flight of form','What flies when the body is disciplined?','dance','dance','classical','global'),{origin:'France / Russia',usage:'Formal Western dance with precise technique.',region:'Worldwide'}),
+    Object.assign(I('Salsa','💃','rhythm of the streets','What connects when two bodies move together?','dance','dance','social','latin'),{origin:'Cuba / Puerto Rico',usage:'Social Latin dance with fast steps.',region:'Worldwide'}),
+    Object.assign(I('Tango','💃','walk of longing','What speaks when two bodies lean?','dance','dance','social','argentina'),{origin:'Argentina',usage:'Passionate, improvised social dance from Buenos Aires.',region:'Worldwide'}),
+    Object.assign(I('Sufi Whirling','🌀','spinning prayer','What prays when the body spins?','dance','dance','sacred','sufi'),{origin:'Turkey',usage:'Meditative spinning of the Mevlevi Sufis.',region:'Turkey'}),
+    Object.assign(I('Butoh','🎭','dance of darkness','What moves when the body forgets itself?','dance','dance','experimental','japan'),{origin:'Japan',usage:'Avant-garde dance of slow, grotesque, and beautiful movement.',region:'Japan'})
+  ]},
+
+  {n:'Sports & Games',h:155,icon:'🏏',items:[
+    Object.assign(I('Kabaddi','🤼','breathless tag','What holds when the breath is held?','sport','sport','team','india'),{origin:'India',usage:'Team sport where one player crosses to tag defenders while chanting.',region:'South Asia'}),
+    Object.assign(I('Cricket','🏏','bat and ball','What waits when the ball is still?','sport','sport','team','commonwealth'),{origin:'England',usage:'Bat-and-ball sport played across the former British Empire.',region:'Worldwide'}),
+    Object.assign(I('Football','⚽','the people\'s game','What unites when the ball rolls?','sport','sport','team','global'),{origin:'England',usage:'The most-watched sport on Earth.',region:'Worldwide'}),
+    Object.assign(I('Hockey','🏑','stick and goal','What runs when the stick speaks?','sport','sport','team','india'),{origin:'India / England',usage:'Stick-and-ball team sport; India\'s national game.',region:'Worldwide'}),
+    Object.assign(I('Chess','♟️','war on squares','What thinks when the board is still?','game','game','board','mind'),{origin:'India',usage:'Two-player strategy board game of infinite possibility.',region:'Worldwide'}),
+    Object.assign(I('Ludo','🎲','dice journey','What returns when the dice decide?','game','game','board','family'),{origin:'India',usage:'Classic family board game of chance.',region:'Worldwide'}),
+    Object.assign(I('Carrom','🎯','finger pool','What flicks when the striker holds?','game','game','board','india'),{origin:'India',usage:'Tabletop game of flicking a striker to pocket pieces.',region:'South Asia'}),
+    Object.assign(I('Kho-Kho','🏃','chase and tag','What follows when the chase begins?','sport','sport','team','india'),{origin:'India',usage:'Tag sport where the chaser runs between seated players.',region:'South Asia'}),
+    Object.assign(I('Gilli-Danda','🏏','stick and stick','What flies when the stick flips?','game','game','folk','india'),{origin:'India',usage:'Traditional game of flipping a small stick with a larger one.',region:'South Asia'}),
+    Object.assign(I('Basketball','🏀','tall game','What reaches when you jump?','sport','sport','team','global'),{origin:'USA',usage:'Team sport of shooting a ball through a hoop.',region:'Worldwide'}),
+    Object.assign(I('Tennis','🎾','serve and return','What returns every time you serve?','sport','sport','racket','global'),{origin:'England / France',usage:'Racket sport of serve and return.',region:'Worldwide'}),
+    Object.assign(I('Badminton','🏸','light flight','What flies when the shuttle is struck?','sport','sport','racket','asia'),{origin:'British India',usage:'Racket sport played with a shuttlecock.',region:'Asia'}),
+    Object.assign(I('Swimming','🏊','water race','What flows when the body enters water?','sport','sport','water','global'),{origin:'Ancient',usage:'Competitive swimming of many strokes.',region:'Worldwide'}),
+    Object.assign(I('Wrestling','🤼','body contest','What speaks when two bodies meet?','sport','sport','body','ancient'),{origin:'Ancient',usage:'Combat sport of grappling and pinning.',region:'Worldwide'}),
+    Object.assign(I('Kalaripayattu','🥋','martial heritage','What strikes and what protects?','sport','sport','martial','india'),{origin:'Kerala',usage:'Ancient Indian martial art of striking, grappling, and weapons.',region:'South India'}),
+    Object.assign(I('Silambam','🥋','staff play','What spins when the staff turns?','sport','sport','martial','india'),{origin:'Tamil Nadu',usage:'Martial art of stick fighting.',region:'South India'}),
+    Object.assign(I('Thang-ta','🥋','sword art','What moves when the hand is empty of fear?','sport','sport','martial','india'),{origin:'Manipur',usage:'Martial art of Manipur with sword and spear.',region:'Northeast India'})
+  ]},
+
+  {n:'Mountains & Rivers',h:175,icon:'🏔️',items:[
+    Object.assign(I('Himalaya','🏔️','abode of snow','What holds the sky and the river?','place','place','mountain','sacred'),{region:'Asia',usage:'Highest mountain range, source of major rivers, sacred to millions.',benefits:['water','climate','pilgrimage'],risks:['glacier melt','earthquakes']}),
+    Object.assign(I('Ganga','🌊','mother river','What returns to the source by flowing away?','place','place','river','sacred'),{region:'India',usage:'Drinking, irrigation, bathing, pilgrimage, ritual.',benefits:['water','fertility','spiritual center'],risks:['pollution','over-extraction']}),
+    Object.assign(I('Yamuna','🌊','sister river','What carries memory downstream?','place','place','river','sacred'),{region:'India',usage:'Water, irrigation, ritual, culture.',risks:['severe pollution']}),
+    Object.assign(I('Brahmaputra','🌊','son of creator','What widens as it leaves the mountains?','place','place','river','sacred'),{region:'India / Bangladesh / Tibet',usage:'Water, transport, fishing, irrigation.'}),
+    Object.assign(I('Narmada','🌊','giver of joy','What divides and what unites?','place','place','river','sacred'),{region:'India',usage:'Pilgrimage, irrigation, hydroelectric power.',risks:['displacement','dam impact']}),
+    Object.assign(I('Godavari','🌊','southern Ganga','What remembers the source?','place','place','river','sacred'),{region:'India',usage:'Irrigation, pilgrimage, fishing.'}),
+    Object.assign(I('Kaveri','🌊','river of the south','What waters when the rains fail?','place','place','river','sacred'),{region:'South India',usage:'Irrigation, drinking water, cultural center.',risks:['interstate disputes','drought']}),
+    Object.assign(I('Indus','🌊','river of rivers','What carries the first cities?','place','place','river','ancient'),{region:'Pakistan / India / Tibet',usage:'Irrigation, ancient civilizations, modern disputes.'}),
+    Object.assign(I('Nile','🌊','river of life','What feeds when the desert is silent?','place','place','river','ancient'),{region:'Egypt / Africa',usage:'Irrigation, transport, ancient civilization.'}),
+    Object.assign(I('Amazon','🌊','river of forests','What breathes when the river floods?','place','place','river','wonder'),{region:'South America',usage:'Biodiversity, water, indigenous life.'}),
+    Object.assign(I('Everest','🏔️','peak of the world','What stands where breath is thin?','place','place','mountain','wonder'),{region:'Nepal / China',usage:'Climbing, pilgrimage, national pride.',risks:['crowding','climate change']}),
+    Object.assign(I('Kailash','🏔️','axis of the world','What circles what it cannot touch?','place','place','mountain','sacred'),{region:'Tibet',usage:'Pilgrimage for Hindus, Buddhists, Jains, Bön.',benefits:['pilgrimage','transformation']}),
+    Object.assign(I('Sundarbans','🌳','beautiful forest','What protects when the storm rises?','place','place','forest','coast'),{region:'India / Bangladesh',usage:'Mangrove forest, tiger habitat, cyclone buffer.',risks:['sea level rise','poaching']}),
+    Object.assign(I('Thar Desert','🏜️','land of death','What lives where nothing should?','place','place','desert','wonder'),{region:'India / Pakistan',usage:'Camel herding, solar energy, folk culture.'})
+  ]},
+
+  {n:'Herbs & Medicines',h:115,icon:'🌿',items:[
+    Object.assign(I('Tulsi','🌿','holy healer','What heals when you walk past it?','herb','medicine','herb','sacred'),{usage:'Leaves for cough, cold, immunity; grown in courtyards.',benefits:['immunity','cough relief','adaptogen']}),
+    Object.assign(I('Neem','🌳','village pharmacy','What heals every part of the body from one tree?','herb','medicine','herb','tree'),{usage:'Leaves, bark, oil for skin, teeth, pests.',benefits:['antibacterial','skin','dental']}),
+    Object.assign(I('Ashwagandha','🌿','strength of the horse','What strengthens when the mind is weak?','herb','medicine','herb','adaptogen'),{usage:'Root powder for stress, sleep, energy.',benefits:['stress','sleep','energy']}),
+    Object.assign(I('Turmeric','🟡','golden healer','What heals what it touches?','herb','medicine','herb','spice'),{usage:'Root powder in food, milk, skin; anti-inflammatory.',benefits:['anti-inflammatory','antioxidant','wound healing']}),
+    Object.assign(I('Ginger','🫚','warming root','What warms when the body is cold?','herb','medicine','herb','spice'),{usage:'Fresh or dried root for digestion, nausea, cold.',benefits:['digestion','nausea','warmth']}),
+    Object.assign(I('Garlic','🧄','small protector','What defends when enemies approach?','herb','medicine','herb','spice'),{usage:'Fresh cloves for heart, immunity, infections.',benefits:['heart','immunity','antibacterial']}),
+    Object.assign(I('Amla','🟢','sour life','What returns when nothing else will?','herb','medicine','herb','fruit'),{usage:'Fruit for vitamin C, hair, digestion.',benefits:['vitamin C','hair','digestion']}),
+    Object.assign(I('Brahmi','🌿','mind of the universe','What clears when the mind is foggy?','herb','medicine','herb','mind'),{usage:'Leaves for memory, focus, calm.',benefits:['memory','focus','calm']}),
+    Object.assign(I('Aloe Vera','🌵','desert healer','What cools when the skin burns?','herb','medicine','herb','skin'),{usage:'Gel for burns, skin, digestion.',benefits:['skin healing','cooling','digestion']}),
+    Object.assign(I('Giloy','🌿','nectar of the gods','What restores when the body is weak?','herb','medicine','herb','immunity'),{usage:'Stem for fever, immunity, chronic illness.',benefits:['immunity','fever','chronic care']}),
+    Object.assign(I('Cinnamon','🪵','sweet bark','What warms when the winter comes?','herb','medicine','spice','warmth'),{usage:'Bark in food and drink for warmth and blood sugar.',benefits:['blood sugar','warmth','digestion']}),
+    Object.assign(I('Clove','🌰','small spear','What numbs when the tooth cries?','herb','medicine','spice','dental'),{usage:'Flower bud for toothache, digestion, warmth.',benefits:['dental','digestion','warming']}),
+    Object.assign(I('Black Pepper','⚫','king of spice','What wakes when the tongue sleeps?','herb','medicine','spice','digestion'),{usage:'Dried berry for digestion and bioavailability.',benefits:['digestion','bioavailability','warming']}),
+    Object.assign(I('Triphala','🟤','three fruits','What balances when the body is out of balance?','herb','medicine','herb','digestive'),{usage:'Three-fruit blend for digestion and detox.',benefits:['digestion','detox','eyes']}),
+    Object.assign(I('Fenugreek','🌾','small seed, big strength','What warms when the body cools?','herb','medicine','seed','lactation'),{usage:'Seeds for digestion, lactation, blood sugar.',benefits:['lactation','blood sugar','digestion']})
+  ]},
+
+  {n:'Foods & Ferments',h:35,icon:'🍯',items:[
+    Object.assign(P('Honey','🍯','liquid sun','Sunlight, stored by bees. What is sunlight made into?','product','Honeybee','Eaten raw, used in cooking, medicine, cosmetics.',['sweet','food','medicine']),{benefits:['antibacterial','energy','soothing'],risks:['botulism in infants','overconsumption']}),
+    Object.assign(P('Ghee','🧈','clarified gold','Butter boiled into gold. What becomes purer by heat?','product','Cow','Cooking fat in Indian cuisine, ritual offering, medicine.',['food','dairy','sacred']),{benefits:['high smoke point','fat-soluble vitamins'],risks:['high calorie']}),
+    Object.assign(P('Curd','🥣','living milk','Milk made alive by bacteria. What lives by being eaten?','product','Cow','Eaten with meals, in raita, lassi, used in rituals.',['food','dairy','probiotic']),{benefits:['gut health','calcium','probiotics']}),
+    Object.assign(P('Cheese','🧀','aged milk','Milk turned to solid by time. What is made by waiting?','product','Cow','Eaten worldwide, aged for flavour.',['food','dairy','ferment']),{benefits:['calcium','protein'],risks:['high fat','high salt']}),
+    Object.assign(P('Bread','🍞','daily grain','What rises when the yeast breathes?','product','Wheat','Staple food across cultures.',['food','grain','staple']),{benefits:['energy','fibre'],risks:['gluten','refined flour']}),
+    Object.assign(P('Wine','🍷','fermented sun','What changes when the grape waits?','product','Grape','Social drink, ritual, cuisine ingredient.',['food','ferment','alcohol']),{benefits:['celebration'],risks:['addiction','liver damage']}),
+    Object.assign(P('Beer','🍺','liquid bread','What bubbles when the grain ferments?','product','Barley','Social drink, cuisine ingredient.',['food','ferment','alcohol']),{benefits:['celebration'],risks:['addiction','liver damage']}),
+    Object.assign(P('Kimchi','🥬','winter keeper','What preserves when the frost comes?','product','Cabbage','Korean fermented vegetable side dish.',['food','ferment','probiotic']),{benefits:['probiotics','vitamins']}),
+    Object.assign(P('Miso','🟤','fermented grain','What deepens when it waits?','product','Soybean','Japanese seasoning paste, soup base.',['food','ferment','umami']),{benefits:['probiotics','umami'],risks:['high salt']}),
+    Object.assign(P('Sauerkraut','🥬','sour cabbage','What turns when the salt holds?','product','Cabbage','Fermented cabbage, European staple.',['food','ferment','probiotic']),{benefits:['probiotics','vitamin C']}),
+    Object.assign(P('Kefir','🥛','living milk','What ferments when the grains work?','product','Milk','Fermented milk drink, probiotic.',['food','ferment','probiotic']),{benefits:['probiotics','gut health']}),
+    Object.assign(P('Kombucha','🫖','bubbling tea','What ferments when the culture lives?','product','Tea','Fermented tea drink.',['food','ferment','probiotic']),{benefits:['probiotics','antioxidants'],risks:['sugar','acid']}),
+    Object.assign(P('Civet Coffee','☕','bitter reformer','A civet eats the bean, its gut makes it bitter. Why pay more for what was made worse?','product','Civet','The civet eats the cherry, the bean is collected from its dung.',['food','bitter','wonder']),{benefits:['unique flavour'],risks:['animal cruelty','high cost']}),
+    Object.assign(P('Tea','🍵','leaf water','What wakes when the leaf soaks?','product','Camellia sinensis','Brewed beverage, ritual across Asia.',['food','drink','ritual']),{benefits:['antioxidants','alertness']}),
+    Object.assign(P('Chocolate','🍫','bitter sweet','What melts when the hand holds it?','product','Cacao','Food from fermented, roasted cacao beans.',['food','sweet','mood']),{benefits:['mood','antioxidants'],risks:['sugar','caffeine']}),
+    Object.assign(P('Pickle','🥒','fermented sun','What preserves when the season ends?','product','Vegetables','Preserved vegetables in brine and spices.',['food','ferment','preserve']),{benefits:['probiotics','preservation'],risks:['high salt']})
+  ]}
+];
+
+// ==================== ENGINE ====================
+function hash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return Math.abs(h>>>0)}
+
+const S = {
+  all:[], cur:-1, q:'', help:{},
+
+  init(){
+    this.buildIndex();
+    this.loadCustom();
+    this.loadHelp();
+    this.renderChips();
+    this.render();
+    const u = localStorage.getItem(K_PACK);
+    if(u) this.fetchPack(u, true);
+  },
+
+  buildIndex(){
+    this.all = [];
+    D.forEach((d,di)=>{
+      d.items.forEach(it=>{
+        const hv = (hash(it.n) % 60) - 30;
+        let hue = d.h + hv; if(hue<0) hue+=360; if(hue>=360) hue-=360;
+        this.all.push({...it, d:di, dname:d.n, baseHue:d.h, hue, idx:this.all.length});
+      });
+    });
+  },
+
+  loadCustom(){
+    try {
+      const c = JSON.parse(localStorage.getItem(K_CUSTOM)||'[]');
+      c.forEach(x=>this.addItem(x,false));
+    } catch {}
+  },
+
+  findDim(c){
+    if(typeof c.dimension==='number' && c.dimension>=0 && c.dimension<D.length) return c.dimension;
+    if(typeof c.dimension==='string'){
+      const i = D.findIndex(d=>d.n.toLowerCase()===c.dimension.toLowerCase());
+      if(i>=0) return i;
+    }
+    const scores = D.map(d=>{
+      let s=0;
+      d.items.forEach(it=>{ s += (it.tags||[]).filter(t=>(c.tags||[]).includes(t)).length });
+      return s;
+    });
+    const best = scores.indexOf(Math.max(...scores));
+    return best>=0?best:0;
+  },
+
+  addItem(c, save){
+    const di = this.findDim(c);
+    const d = D[di];
+    const hv = (hash(c.name) % 60) - 30;
+    let hue = d.h + hv; if(hue<0) hue+=360; if(hue>=360) hue-=360;
+    const item = {
+      n: c.name, i: c.icon||'✨', p: c.poetic||'', t: c.teaches||'',
+      c: c.category||'', tags: c.tags||[],
+      usage: c.usage||'', origin: c.origin||'', region: c.region||'',
+      season: c.season||'', duration: c.duration||'',
+      from: c.from_species||'', related: c.related||[],
+      benefits: c.benefits||[], risks: c.risks||[],
+      d: di, dname: d.n, baseHue: d.h, hue, idx: this.all.length
+    };
+    this.all.push(item);
+    if(save){
+      const cs = JSON.parse(localStorage.getItem(K_CUSTOM)||'[]');
+      cs.push(c);
+      localStorage.setItem(K_CUSTOM, JSON.stringify(cs));
+    }
+    return item;
+  },
+
+  loadHelp(){ try{ this.help = JSON.parse(localStorage.getItem(K_HELP)||'{}') } catch { this.help = {} } },
+
+  async fetchPack(url, silent){
+    try {
+      const r = await fetch(url); const data = await r.json();
+      const items = Array.isArray(data) ? data : [data];
+      items.forEach(x=>this.addItem(x, true));
+      this.render();
+      if(!silent) this.toast(`Fetched ${items.length} items`);
+      return true;
+    } catch(e) { if(!silent) this.toast('Fetch failed'); return false; }
+  },
+
+  renderChips(){
+    document.getElementById('chips').innerHTML =
+      `<button class="chip ${this.cur===-1?'active':''}" onclick="S.filter(-1)">🌍 All</button>` +
+      D.map((d,i)=>`<button class="chip ${this.cur===i?'active':''}" style="--h:${d.h}" onclick="S.filter(${i})">${d.icon} ${d.n}</button>`).join('');
+  },
+
+  filter(di){ this.cur = di; document.querySelectorAll('#chips .chip').forEach((c,i)=>c.classList.toggle('active', i-1===di)); this.render() },
+
+  search(q){
+    this.q = q.trim();
+    const dot = document.getElementById('dot');
+    if(!this.q){ dot.style.background='transparent'; dot.style.boxShadow='none' }
+    else { const h = hash(this.q)%360; dot.style.background=`hsl(${h},80%,60%)`; dot.style.boxShadow=`0 0 10px hsl(${h},80%,60%)` }
+    this.render();
+  },
+
+  score(x, q){
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    let s = 0;
+    const nm = x.n.toLowerCase(), p = x.p.toLowerCase(), t = x.t.toLowerCase();
+    const tags = (x.tags||[]).map(t=>t.toLowerCase());
+    const usage = (x.usage||'').toLowerCase();
+    for(const w of words){
+      if(nm===w) s+=30; else if(nm.includes(w)) s+=15;
+      if(p.includes(w)) s+=10;
+      if(tags.some(t=>t.includes(w))) s+=8;
+      if(t.includes(w)) s+=3;
+      if(usage.includes(w)) s+=5;
+    }
+    const qh = hash(q)%360;
+    const diff = Math.min(Math.abs(x.hue-qh), 360-Math.abs(x.hue-qh));
+    if(diff < 20) s += 4;
+    return s;
+  },
+
+  render(){
+    let list = this.all;
+    if(this.cur>=0) list = list.filter(x=>x.d===this.cur);
+    if(this.q){
+      list = list.map(x=>({x, s:this.score(x,this.q)}))
+        .filter(o=>o.s>0)
+        .sort((a,b)=>b.s-a.s)
+        .map(o=>o.x);
+    }
+    const grid = document.getElementById('grid');
+    if(!list.length){
+      grid.innerHTML = `<div style="grid-column:1/-1;color:var(--muted);padding:30px;text-align:center;font-size:12px">No matches. Try another word, or add via ⚙️</div>`;
+      return;
+    }
+    grid.innerHTML = list.map(x=>`
+      <div class="cell" style="--h:${x.hue}" onclick="S.select(${x.idx})">
+        <div class="i">${x.i}</div>
+        <div class="n">${x.n}</div>
+      </div>`).join('');
+  },
+
+  select(idx){
+    const item = this.all[idx]; if(!item) return;
+    const weave = this.weave(item);
+    const nearby = this.sameDim(item, 6);
+    const productsFrom = this.productsFrom(item);
+    const sourceSpecies = item.from ? this.all.find(x=>x.n===item.from) : null;
+    const helped = this.help[item.n]||0;
+
+    // Build conditional sections
+    let html = `
+      <div class="dh">
+        <div class="di">${item.i}</div>
+        ${item.p?`<div class="dp" style="color:hsl(${item.hue},80%,68%)">${item.p}</div>`:''}
+        <div class="dn">${item.n}</div>
+        <div class="dd">${item.dname}</div>
+      </div>
+    `;
+
+    // Badges: category + from_species
+    const badges = [];
+    if(item.c) badges.push(`<span class="badge" style="background:hsl(${item.hue},60%,20%);color:hsl(${item.hue},80%,70%)">${item.c}</span>`);
+    if(sourceSpecies) badges.push(`<span class="link-chip" onclick="event.stopPropagation();S.select(${sourceSpecies.idx})">from ${sourceSpecies.i} ${sourceSpecies.n}</span>`);
+    if(badges.length) html += `<div class="badges">${badges.join('')}</div>`;
+
+    // Clue
+    if(item.t) html += `<div class="clue"><b>Clue →</b> ${item.t}</div>`;
+
+    // Info grid (only fields that exist)
+    const infoBoxes = [];
+    if(item.origin) infoBoxes.push(this.infoBox('Origin', item.origin));
+    if(item.region) infoBoxes.push(this.infoBox('Region', item.region));
+    if(item.season) infoBoxes.push(this.infoBox('Season', item.season));
+    if(item.duration) infoBoxes.push(this.infoBox('Duration', item.duration));
+    if(infoBoxes.length) html += `<div class="info-grid">${infoBoxes.join('')}</div>`;
+
+    // Usage
+    if(item.usage) html += `<div class="section-lbl">How humans use it</div><div class="text-block">${item.usage}</div>`;
+
+    // Products from this species
+    if(productsFrom.length) html += `
+      <div class="section-lbl">Products from this ${item.c==='species'?'species':'one'}</div>
+      <div class="weave-grid">${productsFrom.map(x=>`
+        <div class="wcard" onclick="S.select(${x.idx})">
+          <div class="wi">${x.i}</div><div class="wn">${x.n}</div>
+          <div class="wp">${x.p}</div><div class="wd">${x.dname}</div>
+        </div>`).join('')}</div>
+    `;
+
+    // Benefits & risks
+    if(item.benefits && item.benefits.length) html += `
+      <div class="section-lbl">Benefits</div>
+      <div class="list-block">${item.benefits.map(b=>`<div class="list-item good">✓ ${b}</div>`).join('')}</div>
+    `;
+    if(item.risks && item.risks.length) html += `
+      <div class="section-lbl">Risks</div>
+      <div class="list-block">${item.risks.map(r=>`<div class="list-item warn">⚠ ${r}</div>`).join('')}</div>
+    `;
+
+    // Tags
+    if(item.tags && item.tags.length) html += `
+      <div class="section-lbl">What it gives</div>
+      <div class="tags-row">${item.tags.map(t=>`<span class="tag">#${t}</span>`).join('')}</div>
+    `;
+
+    // Weave (cross-dimension)
+    if(weave.length) html += `
+      <div class="section-lbl">Weaves with · across dimensions</div>
+      <div class="weave-grid">${weave.map(w=>`
+        <div class="wcard" onclick="S.select(${w.idx})">
+          <div class="wi">${w.i}</div><div class="wn">${w.n}</div>
+          <div class="wp">${w.p}</div><div class="wd">${w.dname}</div>
+        </div>`).join('')}</div>
+    `;
+
+    // Nearby (same dimension)
+    if(nearby.length) html += `
+      <div class="section-lbl">Walk nearby · same dimension</div>
+      <div class="weave-grid">${nearby.map(w=>`
+        <div class="wcard" onclick="S.select(${w.idx})">
+          <div class="wi">${w.i}</div><div class="wn">${w.n}</div>
+          <div class="wp">${w.p}</div>
+        </div>`).join('')}</div>
+    `;
+
+    // Helpful
+    html += `
+      <button class="helpful-btn" onclick="S.markHelpful('${item.n.replace(/'/g,"\\'")}')">✓ This helped me</button>
+      <div class="helpful-count">${helped} ${helped===1?'person found':'people found'} this useful</div>
+    `;
+
+    document.getElementById('detail-body').innerHTML = html;
+    document.getElementById('detail-page').classList.add('open');
+    document.getElementById('detail-page').scrollTop = 0;
+  },
+
+  infoBox(l, v){ return `<div class="info-box"><div class="lb">${l}</div><div class="vl">${v}</div></div>` },
+
+  closeDetail(){ document.getElementById('detail-page').classList.remove('open') },
+
+  markHelpful(name){
+    this.help[name] = (this.help[name]||0)+1;
+    localStorage.setItem(K_HELP, JSON.stringify(this.help));
+    this.toast('Noted. Thank you.');
+    const i = this.all.findIndex(x=>x.n===name);
+    if(i>=0) this.select(i);
+  },
+
+  weave(item){
+    const myTags = new Set(item.tags||[]);
+    const byDim = {};
+    this.all.forEach(o=>{
+      if(o.d===item.d) return;
+      const ov = (o.tags||[]).filter(t=>myTags.has(t));
+      if(!ov.length) return;
+      if(!byDim[o.d] || byDim[o.d]._s < ov.length) byDim[o.d] = {...o, _s:ov.length};
+    });
+    return Object.values(byDim).sort((a,b)=>b._s-a._s).slice(0,6);
+  },
+
+  sameDim(item, n){
+    const same = this.all.filter(x=>x.d===item.d && x.idx!==item.idx);
+    return same.sort(()=>Math.random()-.5).slice(0,n);
+  },
+
+  productsFrom(item){
+    // If this is a species, find products that reference it
+    if(item.c !== 'species') return [];
+    return this.all.filter(x=>x.from === item.n);
+  },
+
+  surprise(){
+    const it = this.all[Math.floor(Math.random()*this.all.length)];
+    this.select(it.idx);
+    this.toast(`🎲 ${it.i} ${it.n} — ${it.p}`);
+  },
+
+  toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(this._tt);
+    this._tt = setTimeout(()=>t.classList.remove('show'), 2400);
+  },
+
+  // ===== ADMIN =====
+  openAdmin(){
+    document.getElementById('admin-body').innerHTML = `
+      <div style="text-align:center;margin-bottom:16px">
+        <h1 style="font-size:22px;font-weight:800;margin-bottom:4px">⚙️ Steward Access</h1>
+        <p style="color:var(--muted);font-size:11.5px">Enter steward password to upload or export cards.</p>
+      </div>
+      <div class="admin-sec">
+        <input type="password" class="admin-input" id="admin-pass" placeholder="Password" style="font-size:16px;padding:12px;text-align:center" autofocus>
+        <button class="btn" style="width:100%;margin-top:6px" onclick="S.tryAdmin()">Enter</button>
+        <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Trusted-contributor gate, not secure authentication.</p>
+      </div>
+    `;
+    document.getElementById('admin-page').classList.add('open');
+    setTimeout(()=>{
+      const el = document.getElementById('admin-pass');
+      if(el) el.addEventListener('keypress', e => { if(e.key==='Enter') S.tryAdmin() });
+    }, 100);
+  },
+
+  tryAdmin(){
+    const el = document.getElementById('admin-pass');
+    const pass = (el.value||'').trim().toLowerCase();
+    if(pass !== ADMIN_PASS){
+      this.toast(`Wrong password. Hint: "${ADMIN_PASS}"`);
+      return;
+    }
+    this.renderAdmin();
+  },
+
+  renderAdmin(){
+    const cs = JSON.parse(localStorage.getItem(K_CUSTOM)||'[]');
+    const pack = localStorage.getItem(K_PACK)||'';
+    document.getElementById('admin-body').innerHTML = `
+      <div style="text-align:center;margin-bottom:16px">
+        <h1 style="font-size:20px;font-weight:800">✅ Steward Panel</h1>
+        <p style="color:var(--muted);font-size:11px">${cs.length} custom items · ${this.all.length} total</p>
+      </div>
+
+      <div class="admin-sec">
+        <h3>📥 Add cards (paste JSON)</h3>
+        <p style="color:var(--muted);font-size:11px;margin-bottom:6px">One object or an array. Only <b>name</b> and <b>icon</b> are required — every other field is optional and renders only if present.</p>
+        <div class="code">[{
+  "name": "Civet",
+  "icon": "🐈",
+  "dimension": "Gifts of Nature",
+  "poetic": "bitter reformer",
+  "teaches": "A civet eats the bean...",
+  "tags": ["food","bitter","wonder"],
+  "category": "species",
+  "region": "Southeast Asia",
+  "usage": "..."
+}]
+
+Fields: name*, icon*, dimension, poetic,
+teaches, tags[], category, usage, origin,
+region, season, duration, from_species,
+benefits[], risks[], related[]
+* = required</div>
+        <textarea class="admin-textarea" id="admin-json" placeholder='[{"name":"...","icon":"..."}]'></textarea>
+        <button class="btn" onclick="S.adminAdd()">＋ Add</button>
+        <button class="btn secondary" onclick="S.loadSample()">Load Sample</button>
+      </div>
+
+      <div class="admin-sec">
+        <h3>💾 Export / Import</h3>
+        <button class="btn secondary" onclick="S.adminExport()">⬇ Download</button>
+        <button class="btn secondary" onclick="document.getElementById('admin-file').click()">⬆ Import</button>
+        <input type="file" id="admin-file" accept=".json" style="display:none" onchange="S.adminImport(event)">
+      </div>
+
+      <div class="admin-sec">
+        <h3>🌐 Fetch from URL</h3>
+        <p style="color:var(--muted);font-size:11px;margin-bottom:6px">Host your JSON on GitHub Raw. Every visitor with this URL auto-loads it.</p>
+        <input type="text" class="admin-input" id="admin-pack-url" placeholder="https://raw.githubusercontent.com/..." value="${pack}">
+        <button class="btn" onclick="S.adminSetPack()">Set & Fetch</button>
+        <button class="btn secondary" onclick="S.adminClearPack()">Clear</button>
+      </div>
+
+      <div class="admin-sec">
+        <h3>📋 Custom items (${cs.length})</h3>
+        <div class="custom-list" id="custom-list"></div>
+        ${cs.length?`<button class="btn danger" style="margin-top:8px" onclick="S.adminClearAll()">Delete All Custom</button>`:''}
+      </div>
+
+      <div class="admin-sec">
+        <h3>ℹ️ How updates reach everyone</h3>
+        <p style="color:var(--muted);font-size:11px;line-height:1.6">
+          Without a backend, sync works three ways:<br>
+          1. <b>localStorage</b> — auto-saves on your device.<br>
+          2. <b>Export → GitHub Raw → Set URL</b> — everyone with the URL auto-fetches.<br>
+          3. <b>Export/Import files</b> — manual sharing.<br><br>
+          Real-time multi-user sync needs one small backend. The JSON format stays the same when you add it.
+        </p>
+      </div>
+    `;
+    this.renderCustom(cs);
+  },
+
+  renderCustom(cs){
+    const el = document.getElementById('custom-list'); if(!el) return;
+    if(!cs.length){ el.innerHTML = '<p style="color:var(--muted);font-size:11px">No custom items yet.</p>'; return; }
+    el.innerHTML = cs.map((c,i)=>`<div class="custom-item"><span>${c.icon||'✨'} <b>${c.name||'?'}</b> <span style="color:var(--muted);font-size:10px">${c.dimension||'auto'}</span></span><button onclick="S.adminDelete(${i})">×</button></div>`).join('');
+  },
+
+  loadSample(){
+    document.getElementById('admin-json').value = JSON.stringify([{
+      name: 'Civet',
+      icon: '🐈',
+      poetic: 'bitter reformer',
+      teaches: 'A civet eats the coffee bean, its gut makes it bitter. Why pay more for what was made worse?',
+      tags: ['food', 'bitter', 'wonder'],
+      category: 'species',
+      region: 'Southeast Asia',
+      usage: 'In the wild, a civet eats coffee cherries; the fermented beans are collected from its droppings and sold at high prices.',
+      benefits: ['supports farmers', 'unique flavour'],
+      risks: ['animal cruelty in caged farming', 'very high price'],
+      from_species: ''
+    }, {
+      name: 'Kalaripayattu',
+      icon: '🥋',
+      poetic: 'martial heritage',
+      teaches: 'What strikes and what protects?',
+      tags: ['sport', 'martial', 'india'],
+      dimension: 'Sports & Games',
+      category: 'sport',
+      origin: 'Kerala',
+      region: 'South India',
+      usage: 'Ancient Indian martial art of striking, grappling, and weapons.',
+      benefits: ['fitness', 'discipline', 'self-defence']
+    }], null, 2);
+    this.toast('Sample loaded — edit and click Add');
+  },
+
+  adminAdd(){
+    const raw = document.getElementById('admin-json').value.trim();
+    if(!raw){ this.toast('Paste JSON first'); return }
+    let data;
+    try { data = JSON.parse(raw) } catch(e){ this.toast('Invalid JSON: ' + e.message.substring(0,40)); return }
+    const items = Array.isArray(data) ? data : [data];
+    let n = 0;
+    items.forEach(c=>{
+      if(!c.name){ return }
+      this.addItem(c, true);
+      n++;
+    });
+    if(n){
+      this.render();
+      this.renderAdmin();
+      this.toast(`Added ${n} item${n>1?'s':''}`);
+    } else {
+      this.toast('Nothing added — check the "name" field');
+    }
+  },
+
+  adminExport(){
+    const cs = JSON.parse(localStorage.getItem(K_CUSTOM)||'[]');
+    const blob = new Blob([JSON.stringify(cs, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `biodiversity-${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    this.toast(`Downloaded ${cs.length} items`);
+  },
+
+  adminImport(e){
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        const items = Array.isArray(data) ? data : [data];
+        items.forEach(c=>{ if(c.name) this.addItem(c, true) });
+        this.render(); this.renderAdmin();
+        this.toast(`Imported ${items.length} items`);
+      } catch { this.toast('Invalid file') }
+    };
+    r.readAsText(f);
+  },
+
+  adminSetPack(){
+    const url = document.getElementById('admin-pack-url').value.trim();
+    if(!url){ this.toast('Enter a URL'); return }
+    localStorage.setItem(K_PACK, url);
+    this.fetchPack(url, false);
+    this.toast('URL saved — auto-fetches on load');
+  },
+
+  adminClearPack(){
+    localStorage.removeItem(K_PACK);
+    const el = document.getElementById('admin-pack-url'); if(el) el.value='';
+    this.toast('URL cleared');
+  },
+
+  adminDelete(i){
+    const cs = JSON.parse(localStorage.getItem(K_CUSTOM)||'[]');
+    cs.splice(i,1);
+    localStorage.setItem(K_CUSTOM, JSON.stringify(cs));
+    this.buildIndex(); this.loadCustom(); this.render(); this.renderAdmin();
+  },
+
+  adminClearAll(){
+    if(!confirm('Delete all custom items? Base spectrum stays.')) return;
+    localStorage.removeItem(K_CUSTOM);
+    this.buildIndex(); this.render(); this.renderAdmin();
+    this.toast('Cleared');
+  },
+
+  closeAdmin(){ document.getElementById('admin-page').classList.remove('open') }
+};
+
+window.onload = () => S.init();
+</script>
+</body>
+</html>
